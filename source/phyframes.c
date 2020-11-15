@@ -1,20 +1,22 @@
 // manage the physical frames
 #include <stdio.h>
+#include <stdlib.h>
 #include "phyframes.h"
 
-int phyInit() {
-    for(int i = 0; i < 8; i++) {
-        stack[i] = 0;
-    }
-    PF.size = 8;
+int phyInit(int size) {
+
+    PF.size = size;
     PF.length = 1;
-    PF.stack = stack;
+    PF.stack = (int *)malloc(size * sizeof(int));
+    for(int i = 0; i < size; i++) {
+        PF.stack[i] = 0;
+    }
     pageFaultCount = 0;
     return 0;
 }
 
 
-int fetch(struct phyFrames *pf, int ind) {
+int fetch(struct phyFrames *pf, int ind, int pageTableSize) {
     
     int frameInd;
     if(pageTable[ind] ==  -1){
@@ -22,7 +24,7 @@ int fetch(struct phyFrames *pf, int ind) {
         if(pf->length < pf->size) {
             frameInd = putNew(pf);
         } else {
-            frameInd = rmLRU(pf);
+            frameInd = rmLRU(pf, pageTableSize);
         }
     } else {
         frameInd = pageTable[ind];
@@ -40,10 +42,10 @@ int putNew(struct phyFrames *pf) {
     return pf->stack[1];
 }
 
-int rmLRU(struct phyFrames *pf) {
+int rmLRU(struct phyFrames *pf, int pageTableSize) {
     int frameInd = pf->stack[pf->length - 1];
 
-    for (int i = 0; i < PAGE_TABLE_SIZE; i++) {
+    for (int i = 0; i < pageTableSize; i++) {
         if(pageTable[i] == frameInd) {
             pageTable[i] = -1;
             break;
