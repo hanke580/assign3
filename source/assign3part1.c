@@ -7,17 +7,15 @@
 #include <fcntl.h>
 #include <errno.h>
 
-#include "list.h"
-#include "phypages.h"
-#include "pagetable.h"
-
-// The number of pages will be used for the kernel
 #define KERNEL_PAGES 1
 #define REAL_PAGE_SIZE 4096
 
 char * sequenceFileName;
+char * outputFileName;
+int pageTable[32] = {2,4,1,7,3,5,6};
 
-inline size_t alignup(size_t size, size_t alignto) {
+
+inline size_t alignup_(size_t size, size_t alignto) {
   return ((size + (alignto - 1)) & ~(alignto - 1));
 }
 
@@ -33,32 +31,44 @@ void analyzeAccessSequenceFromFile(char * fileName) {
 
 	filesize = st.st_size;
 
+
 	fd = open(fileName, O_RDONLY); 
 	if(fd == -1) {
 		fprintf(stderr, "fd is invalid, with error %s\n", strerror(errno));
 		exit(-1);
 	}
 
-	// Compute the aligned size;
-	mapsize = alignup (filesize, REAL_PAGE_SIZE);
+    mapsize = ((filesize + (REAL_PAGE_SIZE - 1)) & ~(REAL_PAGE_SIZE - 1));
 
 	memAccesses = (unsigned long *)mmap(0, mapsize, PROT_READ, MAP_PRIVATE, fd, 0);
 	if(memAccesses == MAP_FAILED) {
 		fprintf(stderr, "mmap the input file failed. \n");
 		exit(-1);
-	}		
-
+    }
 
 	fprintf(stderr, "map starting %p filesize %ld\n", memAccesses, filesize);
 	
+    FILE *od = fopen(outfileName, "wb");
+    if(od == NULL) {
+		fprintf(stderr, "fd is invalid, with error %s\n", strerror(errno));
+		exit(-1);
+    }
+
 	// Traverse all memory accesses of the file
 	for(int i = 0; i < filesize/sizeof(unsigned long); i++) {
 		// Simulate the running
-    fprintf(stderr, "%d: %lx\n", i, memAccesses[i]);
+        unsigned long high = memAccesses[i] >> 7;
+        unsigned long low = memAccesses[i] & ((1<<7) - 1);
+        unsigned long res = low + (pageTable[high]<<7);
+        
+        fprintf(stderr, "%d: %lx\n", i, memAccesses[i]);
+        fprintf(stderr, "%d: %lx\n", i, res);
+        fwrite(&res, sizeof(res), 1, od);
 	} 
 
 }
- 
+
+
 int main(int argc, char ** argv) {
 	int i;
 	int accesses; 

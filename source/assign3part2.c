@@ -7,18 +7,19 @@
 #include <fcntl.h>
 #include <errno.h>
 
+#include "phyframes.h"
+#include "pagetable.h"
+
+
+// The number of pages will be used for the kernel
 #define KERNEL_PAGES 1
 #define REAL_PAGE_SIZE 4096
 
+
 char * sequenceFileName;
-int pageTable[32] = {2,4,1,7,3,5,6};
+char * outputFileName;
 
-
-inline size_t alignup_(size_t size, size_t alignto) {
-  return ((size + (alignto - 1)) & ~(alignto - 1));
-}
-
-void analyzeAccessSequenceFromFile(char * fileName) {
+void analyzeAccessSequenceFromFile(char * fileName, char * outfileName) {
 	// Open this file 
 	int fd;
 	struct stat st;
@@ -47,7 +48,6 @@ void analyzeAccessSequenceFromFile(char * fileName) {
 
 	fprintf(stderr, "map starting %p filesize %ld\n", memAccesses, filesize);
 	
-    char * outfileName = "output-part1";
     FILE *od = fopen(outfileName, "wb");
     if(od == NULL) {
 		fprintf(stderr, "fd is invalid, with error %s\n", strerror(errno));
@@ -58,29 +58,34 @@ void analyzeAccessSequenceFromFile(char * fileName) {
 	for(int i = 0; i < filesize/sizeof(unsigned long); i++) {
 		// Simulate the running
         unsigned long high = memAccesses[i] >> 7;
-        unsigned long low = memAccesses[i] & ((1<<7) - 1);
-        unsigned long res = low + (pageTable[high]<<7);
-        
+        unsigned long low = memAccesses[i] & ((1 << 7) - 1);
+        int frameInd = fetch(&PF, high);
+        unsigned long res = low + (frameInd << 7);        
         fprintf(stderr, "%d: %lx\n", i, memAccesses[i]);
-        fprintf(stderr, "%d: %lx\n", i, res);
         fwrite(&res, sizeof(res), 1, od);
 	} 
 
 }
 
 
+
 int main(int argc, char ** argv) {
 	int i;
 	int accesses; 
+    ptInit();
+    phyInit();
 
 	sequenceFileName = argv[1];
-
+	outputFileName = "output-part2";
 	// Check whether the sequence file is existing and I can access this file?
 	if(access(sequenceFileName, F_OK ) == -1 ) {
     fprintf(stderr, "The sequence file %s is not existing\n", sequenceFileName);
 		exit(-1);
 	} 
 
+
 	// Now analyze the access sequence of the input sequence file
-	analyzeAccessSequenceFromFile(sequenceFileName);
+	analyzeAccessSequenceFromFile(sequenceFileName, outputFileName);
+
+    printf("pageFaultCount = %d\n", pageFaultCount);
 }
