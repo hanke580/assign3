@@ -3,8 +3,15 @@ c95b27848ae8d4354d87678d075001f7  output-part2
 
 pageFaultCount = 3210
 
+
+
+
 Part3 implemented
 Can be tested by running:
 
 ./assign3 256 4096 1024 part2sequence
+pageFaultCount = 3324
+
 ./assign3 128 4096 2048 part2sequence
+pageFaultCount = 2132
+

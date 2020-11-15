@@ -62,10 +62,11 @@ void analyzeAccessSequenceFromFile(char * fileName, char * outfileName, int page
 	// Traverse all memory accesses of the file
 	for(int i = 0; i < filesize/sizeof(unsigned long); i++) {
 		// Simulate the running
-        unsigned long high = memAccesses[i] >> 7;
-        unsigned long low = memAccesses[i] & ((1 << 7) - 1);
+		int PageBit = log2(SizeOfPage);
+        unsigned long high = memAccesses[i] >> PageBit;
+        unsigned long low = memAccesses[i] & ((1 << PageBit) - 1);
         int frameInd = fetch(&PF, high, pageTableSize);
-        unsigned long res = low + (frameInd << 7);        
+        unsigned long res = low + (frameInd << PageBit);        
         fprintf(stderr, "%d: %lx\n", i, memAccesses[i]);
         fwrite(&res, sizeof(res), 1, od);
 	} 
@@ -77,7 +78,6 @@ void analyzeAccessSequenceFromFile(char * fileName, char * outfileName, int page
 int main(int argc, char ** argv) {
 	int i;
 	int accesses; 
-
     
     SizeOfPage = strtoul(argv[1], NULL, 10);
     SizeOfVirtualMemory = strtoul(argv[2], NULL, 10);
@@ -88,7 +88,8 @@ int main(int argc, char ** argv) {
     int pageTableSize = SizeOfVirtualMemory/SizeOfPage;
     int phyFrameSize =SizeOfPhysicalMemory/SizeOfPage;
 
-
+	printf("pageTableSize = %d\n", pageTableSize);
+	printf("phyFrameSize = %d\n" ,phyFrameSize);
     ptInit(pageTableSize);
     phyInit(phyFrameSize);
 

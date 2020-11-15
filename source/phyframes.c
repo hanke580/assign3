@@ -7,17 +7,17 @@ int phyInit(int size) {
 
     PF.size = size;
     PF.length = 1;
-    PF.stack = (int *)malloc(size * sizeof(int));
-    for(int i = 0; i < size; i++) {
-        PF.stack[i] = 0;
-    }
+    PF.head = (struct phyNode*)malloc(sizeof(struct phyNode));
+    PF.tail = PF.head;
+    PF.head->ind = 0;
+    PF.head->next = NULL;
+    PF.head->pre = NULL;
     pageFaultCount = 0;
     return 0;
 }
 
 
 int fetch(struct phyFrames *pf, int ind, int pageTableSize) {
-    
     int frameInd;
     if(pageTable[ind] ==  -1){
         pageFaultCount++;
@@ -34,52 +34,65 @@ int fetch(struct phyFrames *pf, int ind, int pageTableSize) {
     return frameInd;
 }
 
-int putNew(struct phyFrames *pf) {
-    for (int i = pf->length; i > 1; i--) {
-        pf->stack[i] = pf->stack[i-1];
+struct phyNode* del(struct phyFrames *pf, struct phyNode *cur) {
+    if(cur == pf->tail) {
+        pf->tail = cur->pre;
     }
-    pf->stack[1] = pf->length++;
-    return pf->stack[1];
+    struct phyNode *pre = cur->pre;
+    struct phyNode *next = cur->next;
+    if(pre)
+        pre->next = next;
+    if(next)
+        next->pre = pre;
+    cur->pre = NULL;
+    cur->next = NULL;
+    return cur;
+}
+
+int insert(struct phyFrames *pf, struct phyNode* cur) {
+    cur->next = pf->head->next;
+    cur->pre = pf->head;
+    if(pf->head->next){
+        pf->head->next->pre = cur;
+    } else {
+        pf->tail = cur;
+    }
+    pf->head->next = cur;
+    return 0;
+}
+
+int putNew(struct phyFrames *pf) {
+    struct phyNode* cur = (struct phyNode*)malloc(sizeof(struct phyNode));
+    insert(pf, cur);
+    cur->ind = pf->length++;
+    return cur->ind;
 }
 
 int rmLRU(struct phyFrames *pf, int pageTableSize) {
-    int frameInd = pf->stack[pf->length - 1];
-
+    int frameInd = pf->tail->ind;
     for (int i = 0; i < pageTableSize; i++) {
         if(pageTable[i] == frameInd) {
             pageTable[i] = -1;
             break;
         }
     }
-    
-    for (int i = pf->size - 1; i > 1; i--) {
-        pf->stack[i] = pf->stack[i - 1];
-    }
-    pf->stack[1] = frameInd;
+    struct phyNode* cur = del(pf, pf->tail);
+    insert(pf, cur);
     return frameInd;
 }
 
 int mvFront(struct phyFrames *pf, int frameInd) {
-    for (int i = 1; i < pf->length; i++) {
-        if (pf->stack[i] == frameInd) {
-            for (int j = i; j > 1; j--) {
-                pf->stack[j] = pf->stack[j - 1];
-            }
-            pf->stack[1] = frameInd;
-            return 0;
-        }
-    }
-    return -1;
-}
 
-int printFrame(struct phyFrames *pf) {
-    printf("stack list: ");
-    for (int i = 0; i < pf->length; i++) {
-        printf("%d", pf->stack[i]);
-        if(i < pf->length - 1) {
-            printf("->");
-        }
+    // 1: Find cur
+    struct phyNode* cur = pf->head;
+    while(cur && cur->ind!=frameInd){
+        cur = cur->next;
     }
-    printf("\n");
+    if(cur == NULL) {
+        printf("wrong frame ID\n");
+        return -1;
+    }
+    del(pf, cur);
+    insert(pf, cur);
     return 0;
 }

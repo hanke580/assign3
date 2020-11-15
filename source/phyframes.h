@@ -4,8 +4,15 @@
 struct phyFrames {
     int size;
     int length;
-    int *stack;
+    struct phyNode* head;
+    struct phyNode* tail;
 } PF;
+
+struct phyNode {
+    int ind;
+    struct phyNode *pre;
+    struct phyNode *next;
+};
 
 int pageFaultCount;
 
@@ -18,5 +25,3 @@ int putNew(struct phyFrames *pf);
 int rmLRU(struct phyFrames *pf, int pageTableSize);
 
 int mvFront(struct phyFrames *pf, int frameInd);
-
-int printFrame(struct phyFrames *pf);

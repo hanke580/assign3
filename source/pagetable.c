@@ -9,6 +9,7 @@ int ptInit(int pageTableSize) {
     for (int i = 0; i < pageTableSize; i++) {
         pageTable[i] = -1;
     }
+    printf("init done\n");
     return 0;
 }
 
